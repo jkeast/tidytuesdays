@@ -1,0 +1,49 @@
+---
+title: "Untitled"
+author: "Jessica Keast"
+date: "3/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+install.packages("schrute")
+library(dplyr)
+library(stringr)
+library(ggplot2)
+```
+
+```{r}
+#manually checked when a character said "bear" and didn't mean the animal
+#e.g. to bear children
+wrong_bear <- c("10020", "11206", "11224", "14781", "17171", "21422", "21837","22722", "32403", "37142", "42186", "43424", "44383", "48551", "50717", "53723")
+
+#get instances of bears beets or battlestar galactica mentioned
+mydata <- schrute::theoffice %>%
+  mutate(text = tolower(text)) %>% 
+  filter(str_detect(text, "(bear|beet|battlestar|galactica)"), !str_detect(text, "beard"),
+         !index %in% wrong_bear)%>%
+  mutate(type = case_when(
+    str_detect(text, "bear") ~ "Bears",
+    str_detect(text, "beet") ~ "Beets",
+    str_detect(text, "battlestar") ~ "Battlestar Galactica",
+    str_detect(text, "galactica") ~ "Battlestar Galactica"),
+    
+    dwight = case_when(
+      character != "Dwight" ~ "Not Dwight",
+      TRUE ~ "Dwight"
+    )
+  )
+
+#specify factor levels
+mydata$type <- factor(mydata$type, levels = c("Bears", "Beets", "Battlestar Galactica"))
+mydata$dwight <- factor(mydata$dwight, levels = c("Not Dwight", "Dwight"))
+
+#create plot
+ggplot(mydata, aes(type, fill = dwight)) + geom_bar(stat= "count") +
+  labs(y = "Number of Mentions", x = NULL, fill = "Speaker", title = "Bears eat beets:\nNumber of mentions of bears, beets, and Battlestar Galactica in The Office") +
+  scale_fill_manual(values = c("#f0bbc4", "#80192b")) + 
+  theme_classic(base_size = 16)
+
+```
+
+112, 108, 105, 95, 92, 89, 75, 68, 65

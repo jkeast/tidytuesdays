@@ -1,0 +1,69 @@
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(gganimate)
+library(lubridate)
+library(stringr)
+```
+
+TidyTuesday May 12, 2020
+Volcano Eruptions
+
+```{r}
+#data from tidy tuesday repo
+volcano <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/volcano.csv')
+eruptions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/eruptions.csv')
+events <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/events.csv')
+tree_rings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/tree_rings.csv')
+sulfur <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-12/sulfur.csv')
+
+```
+
+```{r}
+#manipulate data for plot
+eruptions_to_plot <- eruptions %>% 
+  filter(eruption_category == "Confirmed Eruption", start_year>=2000, !is.na(vei)) %>% 
+  mutate(start_date = ymd(str_c(start_year, "/", start_month, "/", start_day)),
+         end_date = ymd(str_c(end_year, "/", end_month, "/", end_day)),
+         length = end_date-start_date) %>% 
+  filter(!is.na(start_date), !is.na(end_date))
+
+#create plot
+anim <- ggplot() +
+  #plot world map
+  geom_map(data = map_data('world'), map = map_data('world'), aes(x = long, y = lat, group = group, map_id=region)) +
+  #add volcanos
+  geom_point(data = volcano, aes(x=longitude, y=latitude), shape = 17)+
+  #add eruptions
+  geom_point(data = eruptions_to_plot, aes(x=longitude, y=latitude, size=vei, color=vei))+
+  scale_color_continuous(name = "",low = "yellow", high = "red",
+                         labels = c("   Less\nExplosive", "", "", "", "", "   More\nExplosive"))+
+  #add dot for eruption on eruption start date,
+  #and remove it on eruption end date
+  transition_events(start = start_date,
+                    end = end_date,
+                    #enter_length and exit_length equivalate to one 
+                    #(gganimate required they be in Date format)
+                    enter_length = mdy("1-1-1970"),
+                    exit_length =  mdy("1-1-1970"))+
+      labs(title = 'Volcano Eruptions on {frame_time}', x=NULL, y=NULL)+
+  theme_void()+
+  theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0, linetype = NULL),
+  panel.border = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  legend.position="bottom")+
+  scale_size(guide = 'none')+
+  #make dimension proportions correct
+  coord_quickmap()
+
+animate(anim, height = 400, width =800)
+```
+
+
+
+
