@@ -1,0 +1,43 @@
+---
+title: "7-06-2020"
+author: "Jessica Keast"
+date: "7/6/2020"
+output: html_document
+---
+
+```{r}
+library(readr)
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(janitor)
+library(extrafont)
+
+
+#need to import and load fonts for plot
+font_import()
+extrafont::loadfonts(device = "win")
+```
+
+
+```{r}
+#load in data
+coffee_ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv') %>% 
+  select(species, aroma, flavor, aftertaste, acidity, body, balance, uniformity, sweetness) %>%
+  clean_names(case = "upper_camel") %>% 
+  melt(id.vars = "Species")
+
+
+ggplot(coffee_ratings, aes(x=variable, y=value)) + geom_boxplot(aes(color = Species)) + 
+  coord_flip() + 
+  #hex codes from https://www.color-hex.com/color-palette/59945
+  scale_color_manual(values = c("#563517", "#9c6f44"))+
+  labs(title = "Boxplots of Coffee Ratings by Bean Species", y = "Rating", x = NULL, caption = "Data from the Coffee Quality Institute")+
+  #set plot fonts
+  theme(text = element_text(family = "Segoe UI"),
+    plot.title=element_text(family = "Bodoni MT", face="bold"))
+
+ggsave("tt_7-06-20.png", height = 4, width = 8, units = "in")
+```
+
+

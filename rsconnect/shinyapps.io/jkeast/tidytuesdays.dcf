@@ -1,0 +1,13 @@
+name: tidytuesdays
+title:
+username:
+account: jkeast
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2365709
+bundleId: 3196529
+url: https://jkeast.shinyapps.io/tidytuesdays/
+when: 1590598949.06661
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .RData|3-17-2020.Rmd|5-12-2020.Rmd|5-19-2020.Rmd|README.md|tt_5-12-20.gif

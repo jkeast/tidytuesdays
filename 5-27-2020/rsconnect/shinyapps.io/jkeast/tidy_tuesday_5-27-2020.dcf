@@ -1,0 +1,12 @@
+name: tidy_tuesday_5-27-2020
+title: tidy_tuesday_5-27-2020
+username:
+account: jkeast
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2368503
+bundleId: 3198378
+url: https://jkeast.shinyapps.io/tidy_tuesday_5-27-2020/
+when: 1590632406.03165
+asMultiple: FALSE
+asStatic: FALSE
