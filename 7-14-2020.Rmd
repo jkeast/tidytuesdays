@@ -1,0 +1,68 @@
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(extrafont)
+```
+
+```{r}
+astronauts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-14/astronauts.csv')
+```
+
+```{r}
+astronauts$year_of_mission <- as.numeric(astronauts$year_of_mission)
+
+astro <- astronauts %>% 
+  filter(nationality %in% c("U.S.", "U.S.S.R/Russia")) %>% 
+  
+  #get sum of mission hours per year
+  group_by(nationality, year_of_mission, mission_number) %>% 
+  summarize(sum(hours_mission)) %>% 
+  group_by(nationality, year_of_mission) %>% 
+  summarize(sum_hours = sum(`sum(hours_mission)`)) %>% 
+  
+  #to highlight missions during cold war
+  mutate(era= case_when(
+    #name to hide post-cold war legend
+    year_of_mission < 1992 ~ "Cold War era              ",
+    TRUE ~ ""))
+
+ggplot(astro) + geom_col(aes(x=year_of_mission, y=sum_hours, fill = era), stat = "identity") +
+  coord_polar() + 
+  scale_fill_manual(values = c("#bfbfbf", "#d16666"))+
+  facet_wrap(~nationality)+
+  ylim(-10000, 30000)+
+  
+  labs(title = "TOTAL SPACE MISSION HOURS PER YEAR\n", x=NULL, fill = NULL)+
+  guides(fill = guide_legend(override.aes = list(fill = c("gray10", "#d16666"))))+
+  
+  theme(plot.background = element_rect(fill = "gray10"),
+        panel.background = element_rect(fill = "gray10"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "gray20"),
+        panel.grid.minor = element_line(size = 0.5, linetype = 'solid', colour = "gray15"),
+        
+        text = element_text(family= "Muli", size = 12),
+        plot.title = element_text(hjust = 0.5, color = "gray90", size = 17, face = "bold"),
+        
+        axis.text.x = element_text(color = "gray"),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        
+        legend.key=element_blank(),
+        legend.position="bottom",
+        legend.title = element_text(color = "gray80"),
+        legend.text = element_text(color = "gray75"),
+        legend.background = element_rect(fill = "gray10"),
+        
+        strip.background = element_rect(fill="gray10"),
+        strip.text.x = element_text(color = "gray75", size = 13))+
+  
+  annotate("text", x=1965, y=10000, label = "10k", angle = -30, color = "gray55", size = 3)+
+  annotate("text", x=1965, y=20000, label = "20k", angle = -30, color = "gray55", size = 3.25)+
+  annotate("text", x=1965, y=30000, label = "30k", angle = -30, color = "gray55", size = 3.5)
+
+ggsave("tt_20-07-14.png")
+```
+
+
