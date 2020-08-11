@@ -1,0 +1,161 @@
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(reshape2)
+library(stringr)
+library(purrr)
+library(extrafont)
+library(latex2exp)
+library(ggmap)
+library(patchwork)
+```
+
+
+```{r}
+#https://www.nytimes.com/interactive/2018/12/24/climate/how-electricity-generation-changed-in-your-state.html
+
+energy_types <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-04/energy_types.csv')
+country_totals <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-08-04/country_totals.csv')
+
+energy_types %>% group_by(country, country_name) %>% summarize()
+```
+
+```{r}
+energy_types2 <- energy_types %>% 
+  select(-c(level)) %>% 
+  melt(id.vars = c("country", "country_name", "type"),
+       variable.name = "year", 
+       value.name = "energy") %>% 
+  
+  mutate(type = case_when(
+    #combine both hydro into one
+    type == "Pumped hydro power" ~ "Hydro",
+    #more intuitive naming
+    type == "Conventional thermal" ~ "Fossil Fuels",
+    TRUE ~ type),
+    
+    country_name = case_when(
+      country == "EL" ~ "Greece",
+      country == "UK" ~ "the United Kingdom",
+      country == "NL" ~ "the Netherlands",
+      TRUE ~ country_name)) %>% 
+  group_by(country, country_name, type, year) %>% 
+  summarize(energy = sum(energy))
+
+yearly_totals <- energy_types2 %>% 
+  group_by(country, year) %>% 
+  summarize(total_energy = sum(energy))
+
+energy_types3 <- energy_types2 %>% 
+  left_join(yearly_totals, by = c("country", "year")) %>% 
+  mutate(proportion = energy/total_energy)
+
+countries <- energy_types2 %>% 
+  group_by(country_name) %>% 
+  summarize()
+```
+
+
+```{r}
+#get labels for energy use percentages and placement for where to go on plot
+
+get_labels <- function(data_year, data){
+  labels <- data %>% 
+    filter(year == data_year) %>% 
+    arrange(type) 
+  labels$placement1 <- lead(labels$proportion, 1)
+  labels$placement2 <- lead(labels$proportion, 2)
+  labels$placement3 <- lead(labels$proportion, 3)
+  labels$placement4 <- lead(labels$proportion, 4)
+  labels$placement5 <- lead(labels$proportion, 5)
+  labels$placement6 <- lead(labels$proportion, 6)
+  
+  labels[is.na(labels)] <- 0
+  
+  labels %>% 
+    mutate(placement = placement1 + placement2 + placement3 + placement4 + placement5 + placement6 + proportion/2,
+           proportion = round(proportion, 2)) %>% 
+    ungroup() %>% 
+    select(proportion, placement, type) %>% 
+    filter(proportion > .04) %>% 
+    mutate(x_placement = case_when(
+      data_year == 2016 ~ 1.1,
+      data_year == 2017 ~ 2,
+      data_year == 2018 ~ 2.9)) 
+}
+
+get_labels(2016)
+```
+
+
+```{r}
+#function to make plots
+plot_energy <- function(country_string){
+  country_energy <- energy_types3 %>% 
+    filter(country_name == country_string) 
+  
+  #order energy sources and map to colors
+  type_order <- country_energy %>% 
+    dplyr::group_by(type) %>% 
+    dplyr::summarize(sum_energy = sum(energy)) %>% 
+    dplyr::arrange(desc(sum_energy)) %>% 
+    dplyr::mutate(color = case_when(
+      type == "Fossil Fuels" ~ "#66604B",
+      type == "Wind" ~ "#709BC2",
+      type == "Nuclear" ~ "#9E70C2",
+      type == "Solar" ~ "#F7D930",
+      type == "Hydro" ~ "#80E3E9",
+      type == "Other" ~ "#D366A7",
+      type == "Geothermal" ~ "#E39323",
+    ))
+  country_energy$type <- factor(country_energy$type, levels = type_order$type)
+  
+  #get energy percentages to use in plot
+  labels <- rbind(get_labels(2016, country_energy), get_labels(2018, country_energy))
+  
+  energy_plot <- ggplot(country_energy, aes(x=year, y = proportion, group = type, fill = type))+geom_area(color = "white")+
+    scale_fill_manual(values = type_order$color)+
+      
+    labs(title = TeX(str_c("How \\textbf{", country_string, "} Generated Electricity from 2016 to 2018")),
+         subtitle = "Percentage of Power Produced from Each Energy Source\n", fill = NULL, x = NULL, y= NULL)+
+    #put percentages of energy useage on graph  
+    geom_text(data = labels, aes(x = x_placement, y = placement, label = str_c(proportion*100, "%")), size = 3.5)+
+    #label the energy sources
+    geom_text(data = get_labels(2017, country_energy), aes(x = x_placement, y = placement, label = type, size = proportion))+
+    scale_size(range = c(3.5, 8))+
+    
+    theme(text = element_text(family = "Calibri"),
+            plot.title = element_text(size = 15.5),
+            plot.subtitle = element_text(color = "gray50"),
+            legend.position = "none",
+            axis.text.y=element_blank(),
+            axis.ticks.y=element_blank(),
+            panel.background = element_blank())+
+      scale_y_discrete(expand=c(-.5,.51))+
+      scale_x_discrete(expand=c(-.5,.51))
+    
+  #make map with country filled in
+  map <- ggplot(europe_map, aes(x=long, y=lat, group = group)) +
+    geom_polygon(fill="white", colour = "gray")+
+    geom_polygon(fill="black", data = filter(europe_map, region == country_string))+
+    theme_void() + 
+    coord_fixed()
+  
+  #information on layout here: https://patchwork.data-imaginist.com/articles/guides/layout.html
+  layout <- c(
+      area(t = 2, l = 0, b = 20, r = 14),
+      area(t = 1, l = 13, b = 2, r = 14)
+    )
+  
+  #combine plots with patchwork
+  energy_plot + map + plot_layout(design = layout)
+  
+  #save as [country].png
+  ggsave(str_c(country_string, ".png"))
+}
+
+
+map(countries$country_name, plot_energy)
+```
+

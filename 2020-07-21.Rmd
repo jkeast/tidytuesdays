@@ -1,0 +1,38 @@
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(reshape2)
+```
+
+
+```{r}
+animal_outcomes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-21/animal_outcomes.csv')
+animal_complaints <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-21/animal_complaints.csv')
+brisbane_complaints <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-21/brisbane_complaints.csv')
+```
+
+```{r}
+outcomes <- animal_outcomes %>% 
+  #select(-c(Total)) %>% 
+  #melt(id.vars = c("year", "animal_type", "outcome"),
+  #     variable.name = "region", 
+  #     value.name = "number") %>% 
+  select(year, animal_type, outcome, Total) %>% 
+  filter(animal_type %in% c("Cats", "Dogs", "Wildlife"))
+
+yearly_totals <- outcomes %>% 
+  group_by(year, animal_type) %>% 
+  summarize(yearly_total = sum(Total))
+
+outcomes2 <- outcomes %>% 
+  left_join(yearly_totals, by=c("year", "animal_type")) %>% 
+  mutate(proportion = Total/yearly_total,
+         outcome = case_when(
+           outcome == "Rehomed"  ~ "Rehomed/Released",
+           outcome == "Released" ~ "Rehomed/Released",
+           TRUE ~ outcome))
+
+ggplot(outcomes2, aes(x=year, y=proportion, fill = outcome)) + geom_col(identity= "stat") + facet_wrap(~animal_type)
+```
+
